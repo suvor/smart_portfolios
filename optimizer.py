@@ -26,34 +26,37 @@ data = {"SP": {"AM": 5/100, "GM": 3/100, "std": 19.8/100, "SR": 0.15},
 data_old_df = pd.DataFrame(data_old).transpose()
 data_df = pd.DataFrame(data).transpose()
 
-r = get_vector(data_old_df.loc[:, "AM"])
-std = get_vector(data_old_df.loc[:, "std"])
 
-correl = np.array([[1, 0.05], [0.05, 1]])
-
-cov = std.dot(std.T) * correl
-
-weights = get_vector([0.6, 0.4])
+def get_vector(l):
+    return np.array(l).reshape(len(l), 1)
 
 
-# sigma_2 = ((weights.T).dot(cov)).dot(weights)
-def sigma_2(weights):
+def sigma_2(weights, cov):
     return weights.T.dot(cov).dot(weights)[0, 0]
 
 
-# sigma = math.sqrt(sigma_2)
 def sigma(weights):
-    return math.sqrt(sigma_2(weights))
+    return math.sqrt(sigma_2(weights, cov))
 
 
-# r_geom = weights.T.dot(r) - 0.5 * sigma_2
-def r_geom(weights):
-    return (weights.T.dot(r) - 0.5 * sigma_2(weights))[0, 0]
+def r_geom(weights, cov, r):
+    return (weights.T.dot(r) - 0.5 * sigma_2(weights, cov))[0, 0]
 
 
-# sharpe_geom = r_geom / math.sqrt(sigma_2)
-def sharpe_geom(weights):
-    return r_geom(weights) / math.sqrt(sigma_2(weights))
+def sharpe_geom(weights, cov, r):
+    return r_geom(weights, cov, r) / math.sqrt(sigma_2(weights, cov))
+
+
+# calculates covariance matrix from correlation matrix
+def cov(correl, std):
+    return std.dot(std.T) * correl
+
+
+r = get_vector(data_old_df.loc[:, "AM"])
+std = get_vector(data_old_df.loc[:, "std"])
+correl = np.array([[1, 0.05], [0.05, 1]])
+weights = get_vector([0.6, 0.4])
+cov = cov(correl, std)
 
 # def r_geom_f(weights):
 #     sigma_2 = ((weights.T).dot(cov)).dot(weights)
@@ -71,8 +74,8 @@ w2 = 1 - w1
 
 weights = [get_vector([w1[i], w2[i]]) for i in range(0, n + 1)]
 
-r_geom_array = np.array([r_geom(w) for w in weights])
-sharpe_geom_array = np.array([sharpe_geom(w) for w in weights])
+r_geom_array = np.array([r_geom(w, cov, r) for w in weights])
+sharpe_geom_array = np.array([sharpe_geom(w, cov, r) for w in weights])
 sigma_array = np.array([sigma(w) for w in weights])
 
 # max geom return
@@ -89,3 +92,5 @@ plt.scatter(sigma_array, r_geom_array, c=sharpe_geom_array, cmap='plasma')
 plt.colorbar(label='Sharpe Ratio')
 plt.xlabel('Volatility')
 plt.ylabel('Return')
+
+
